@@ -1,4 +1,4 @@
-﻿#ifndef VSJS_H
+#ifndef VSJS_H
 #define VSJS_H
 
 #include <node.h>
@@ -9,7 +9,12 @@
 class Vapoursynth : public node::ObjectWrap {
     public:
         static void Init(v8::Handle<v8::Object> exports);
-        
+
+        const VSAPI *vsapi;
+        VSScript *se;
+        VSNodeRef *node;
+        const VSVideoInfo *vi;
+
     private:
         Vapoursynth(const char*, const char*);
         ~Vapoursynth();
@@ -18,10 +23,6 @@ class Vapoursynth : public node::ObjectWrap {
         static NAN_METHOD(GetInfo);
         static NAN_METHOD(GetFrame);
         static v8::Persistent<v8::Function> constructor;
-        const VSAPI *vsapi;
-        VSScript *se;
-        VSNodeRef *node;
-        const VSVideoInfo *vi;
 };
 
 #endif

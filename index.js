@@ -1,4 +1,4 @@
-﻿var Readable = require('readable-stream').Readable;
+var Readable = require('readable-stream').Readable;
 var vsjs = require('./build/Release/vsjs');
 var replaceExt = require('replace-ext');
 var through = require('through2');
@@ -37,14 +37,21 @@ YuvFromVapoursynth.prototype._read = function () {
         return;
     }
 
-    this.Vapoursynth.getFrame(this.currentFrame++, this.frameBuffer)
+    this.Vapoursynth.getFrame(this.currentFrame++, this.frameBuffer, this.frameCallback.bind(this));
+};
 
+YuvFromVapoursynth.prototype.frameCallback = function (err) {
+    if (err) {
+        this.emit('error', err);
+        return;
+    }
+    
     if (this.y4m) {
         this.push(Buffer.concat([new Buffer("FRAME\n"), this.frameBuffer], this.info.frameSize + 6))
     } else {
         this.push(this.frameBuffer);
     }
-}
+};
 
 module.exports = function (opts) {
     opts = opts || {};

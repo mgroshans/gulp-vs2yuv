@@ -1,4 +1,4 @@
-﻿#include <node.h>
+#include <node.h>
 #include "vsjs.h"
 
 using namespace v8;

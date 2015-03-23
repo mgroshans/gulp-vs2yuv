@@ -1,4 +1,4 @@
-﻿#include <sstream>
+#include <sstream>
 
 #include "vsjs.h"
 #include "node_buffer.h"
@@ -101,39 +101,54 @@ NAN_METHOD(Vapoursynth::New) {
     }
 }
 
+class FrameWorker : public NanAsyncWorker {
+    public:
+        FrameWorker(Vapoursynth *obj, int32_t frameNumber, char *outBuffer, NanCallback *callback)
+            : obj(obj), frameNumber(frameNumber), outBuffer(outBuffer), NanAsyncWorker(callback) {}
+        ~FrameWorker() {}
+
+    void Execute() {
+        char errMsg[1024];
+        const VSFrameRef *frame = obj->vsapi->getFrame(frameNumber, obj->node, errMsg, sizeof(errMsg));
+
+        if (!frame) {
+            ostringstream ss;
+            ss << "Encountered error getting frame " << frameNumber << ": " << errMsg;
+            SetErrorMessage(ss.str().data());
+            return;
+        }
+
+        for (int p = 0; p < obj->vi->format->numPlanes; p++) {
+            int stride = obj->vsapi->getStride(frame, p);
+            const uint8_t *readPtr = obj->vsapi->getReadPtr(frame, p);
+            int rowSize = obj->vsapi->getFrameWidth(frame, p) * obj->vi->format->bytesPerSample;
+            int height = obj->vsapi->getFrameHeight(frame, p);
+
+            for (int y = 0; y < height; y++) {
+                memcpy(outBuffer, readPtr, rowSize);
+                outBuffer += rowSize;
+                readPtr += stride;
+            }
+        }
+
+        obj->vsapi->freeFrame(frame);
+    }
+
+    private:
+        Vapoursynth *obj;
+        int32_t frameNumber;
+        char *outBuffer;
+};
+
 NAN_METHOD(Vapoursynth::GetFrame) {
     NanScope();
     Vapoursynth *obj = Unwrap<Vapoursynth>(args.This());
 
-    int32_t n = args[0]->Int32Value();
-    if (n >= obj->vi->numFrames) {
-    }
+    int32_t frameNumber = args[0]->Int32Value();
     char *outBuffer = Data(args[1]);
+    NanCallback *callback = new NanCallback(args[2].As<Function>());
 
-    char errMsg[1024];
-    const VSFrameRef *frame = obj->vsapi->getFrame(n, obj->node, errMsg, sizeof(errMsg));
-
-    if (!frame) {
-        ostringstream ss;
-        ss << "Encountered error getting frame " << n << ": " << errMsg;
-        NanThrowError(ss.str().data());
-        return;
-    }
-
-    for (int p = 0; p < obj->vi->format->numPlanes; p++) {
-        int stride = obj->vsapi->getStride(frame, p);
-        const uint8_t *readPtr = obj->vsapi->getReadPtr(frame, p);
-        int rowSize = obj->vsapi->getFrameWidth(frame, p) * obj->vi->format->bytesPerSample;
-        int height = obj->vsapi->getFrameHeight(frame, p);
-
-        for (int y = 0; y < height; y++) {
-            memcpy(outBuffer, readPtr, rowSize);
-            outBuffer += rowSize;
-            readPtr += stride;
-        }
-    }
-
-    obj->vsapi->freeFrame(frame);
+    NanAsyncQueueWorker(new FrameWorker(obj, frameNumber, outBuffer, callback));
 }
 
 static int frameSize(const VSVideoInfo *vi) {

@@ -1,4 +1,4 @@
-﻿{
+{
   "name": "gulp-vs2yuv",
   "version": "0.0.1",
   "description": "Gulp plugin which outputs YUV data given vapoursynth files.",
