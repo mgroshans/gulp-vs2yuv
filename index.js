@@ -1,9 +1,9 @@
 var Readable = require('readable-stream').Readable;
-var vsjs = require('./build/Release/vsjs');
 var replaceExt = require('replace-ext');
 var through = require('through2');
 var File = require('vinyl');
 var util = require('util');
+var vsjs = require('vsjs');
 
 var YuvFromVapoursynth = function () {
     return Readable.call(this);
@@ -22,9 +22,7 @@ YuvFromVapoursynth.prototype._init = function (script, path, opts) {
     this.currentFrame = 0;
     this.frameBuffer = new Buffer(this.info.frameSize);
     if (this.y4m) {
-        /*if (this.info.format.colorFamily !== 'gray' && this.info.format.colorFamily !== 'yuv') {
-            this.emit('error', 'Can only apply y4m headers to YUV and Gray format clips!');
-        }*/
+        // TODO throw exception when we can't add headers and support wider variety of YUV formats
         this.push(new Buffer("YUV4MPEG2 C420 W" + this.info.width + " H" + this.info.height +
                 " F" + this.info.fps.numerator + ":" + this.info.fps.denominator + " Ip A0:0\n"));
     }
